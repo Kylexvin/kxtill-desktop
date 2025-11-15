@@ -1,0 +1,27 @@
+/* src/components/common/Layout/Layout.css */
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Ensure the active sidebar item overlaps the main content */
+.main-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -30px;
+  bottom: 0;
+  width: 30px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 5;
+}

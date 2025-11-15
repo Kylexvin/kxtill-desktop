@@ -1,0 +1,25 @@
+/* src/pages/POS.css */
+.pos-container {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.pos-products {
+  background: white;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pos-cart {
+  background: white;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e5e7eb;
+}
