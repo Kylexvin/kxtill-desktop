@@ -6,15 +6,44 @@
   "type": "module",
   "scripts": {
     "electron": "electron .",
-    "electron-dev": "electron .",
+    "electron-dev": "NODE_ENV=development electron .",
     "react-dev": "cd src/renderer && npm start",
-    "dev": "npm run electron-dev",
-    "build": "cd src/renderer && npm run build"
+    "dev": "concurrently \"npm run react-dev\" \"wait-on http://localhost:3000 && npm run electron-dev\"",
+    "build": "cd src/renderer && npm run build",
+    "build-electron": "npm run build && electron-builder",
+    "pack": "electron-builder --dir"
   },
   "keywords": ["pos", "retail", "electron", "kxtill"],
   "author": "KXTILL",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^27.0.0"
+    "electron": "^27.0.0",
+    "concurrently": "^8.2.0",
+    "wait-on": "^7.0.1",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  },
+  "build": {
+    "appId": "com.kxtill.pos",
+    "productName": "KxTill POS",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "src/main/**/*",
+      "src/renderer/build/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

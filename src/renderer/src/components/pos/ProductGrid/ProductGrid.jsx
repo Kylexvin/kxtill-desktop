@@ -1,35 +1,66 @@
-// src/components/pos/ProductGrid/ProductGrid.jsx
 import React from 'react';
+import { Package, Check } from 'lucide-react';
 import './ProductGrid.css';
 
-const ProductGrid = () => {
-  const products = [
-    { id: 1, name: 'Product 1', price: 10.99, stock: 15 },
-    { id: 2, name: 'Product 2', price: 15.50, stock: 8 },
-    { id: 3, name: 'Product 3', price: 8.99, stock: 20 },
-    { id: 4, name: 'Product 4', price: 12.75, stock: 5 },
-    { id: 5, name: 'Product 5', price: 19.99, stock: 12 },
-    { id: 6, name: 'Product 6', price: 7.25, stock: 18 }
-  ];
-
-  return (
-    <div className="product-grid">
-      <div className="product-grid-header">
-        <h3>Products</h3>
-        <input type="text" placeholder="Search..." className="search-input" />
-      </div>
-      <div className="products-container">
-        {products.map(product => (
-          <div key={product.id} className="product-card">
-            <div className="product-info">
-              <h4>{product.name}</h4>
-              <p className="price">${product.price}</p>
-              <p className="stock">Stock: {product.stock}</p>
-            </div>
-            <button className="add-btn">Add</button>
+const ProductGrid = ({ products, loading, onAddToCart, recentlyAdded }) => {
+  if (loading) {
+    return (
+      <div className="products-grid">
+        {Array(6).fill(0).map((_, i) => (
+          <div key={i} className="product-skeleton">
+            <div className="skeleton-image" />
+            <div className="skeleton-text" />
+            <div className="skeleton-text" />
           </div>
         ))}
       </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="empty-state">
+        <Package size={48} color="#9ca3af" />
+        <p>No products found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="products-grid">
+      {products.map(product => (
+        <div
+          key={product.id}
+          onClick={() => onAddToCart(product)}
+          className={`product-card ${recentlyAdded[product.id] ? 'product-card-added' : ''}`}
+        >
+          <div className="product-image">
+            <span className="product-initials">
+              {product.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+            </span>
+            {recentlyAdded[product.id] && (
+              <div className="success-overlay">
+                <Check size={24} color="white" />
+              </div>
+            )}
+          </div>
+          
+          <div className="product-info">
+            <h3 className="product-name">{product.name}</h3>
+            <p className="product-price">
+              {product.needsCustomPrice ? 'Custom Price' : `KSh ${product.sellingPrice}`}
+            </p>
+            
+            {product.trackStock && (
+              <span className="stock-tag">{product.quantity} in stock</span>
+            )}
+            
+            {product.needsCustomPrice && (
+              <span className="custom-badge">Custom</span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

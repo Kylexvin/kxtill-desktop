@@ -2,11 +2,19 @@ import React from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AppProvider, useApp } from './contexts/AppContext';
+import { CartProvider } from './contexts/CartContext';
 import Login from './pages/Login';
+import Layout from './components/common/Layout/Layout';
+import Dashboard from './pages/Dashboard';
 import POS from './pages/POS';
+import Products from './pages/Products';
+import Inventory from './pages/Inventory';
+import Staff from './pages/Staff';
+import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
 import './styles/globals.css';
 
-// Global Axios configuration
 const axiosInstance = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
 });
@@ -44,33 +52,59 @@ function ProtectedRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { user } = useAuth();
-  return !user ? children : <Navigate to="/pos" />;
+  return !user ? children : <Navigate to="/" />;
+}
+
+function AppContent() {
+  const { activeTab } = useApp();
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return <Dashboard />;
+      case 'pos': return <POS />;
+      case 'products': return <Products />;
+      case 'inventory': return <Inventory />;
+      case 'staff': return <Staff />;
+      case 'analytics': return <Analytics />;
+      case 'settings': return <Settings />;
+      default: return <Dashboard />;
+    }
+  };
+
+  return (
+    <Layout>
+      {renderContent()}
+    </Layout>
+  );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route 
-            path="/login" 
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/pos" 
-            element={
-              <ProtectedRoute>
-                <POS />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/" element={<Navigate to="/pos" />} />
-        </Routes>
-      </Router>
+      <AppProvider>
+        <CartProvider>
+          <Router>
+            <Routes>
+              <Route 
+                path="/login" 
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                } 
+              />
+              <Route 
+                path="/*" 
+                element={
+                  <ProtectedRoute>
+                    <AppContent />
+                  </ProtectedRoute>
+                } 
+              />
+            </Routes>
+          </Router>
+        </CartProvider>
+      </AppProvider>
     </AuthProvider>
   );
 }

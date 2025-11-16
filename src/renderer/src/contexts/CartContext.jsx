@@ -1,64 +1,106 @@
-// src/contexts/CartContext.jsx
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const CartContext = createContext();
 
-export function useCart() {
+export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-}
+};
 
-export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]);
+export const CartProvider = ({ children }) => {
+  const [cart, setCart] = useState([]);
+  const [recentlyAdded, setRecentlyAdded] = useState({});
 
   const addToCart = (product) => {
-    setCartItems(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
+    const existingItem = cart.find(item => item.productId === product.id && !item.needsCustomPrice);
+    
+    if (existingItem) {
+      setCart(cart.map(item =>
+        item.productId === product.id && !item.needsCustomPrice
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, {
+        productId: product.id,
+        cartItemId: `cart-${Date.now()}-${Math.random()}`,
+        name: product.name,
+        quantity: 1,
+        price: product.sellingPrice,
+        trackStock: product.trackStock,
+        needsCustomPrice: false
+      }]);
+    }
+    
+    setRecentlyAdded(prev => ({ ...prev, [product.id]: true }));
+    setTimeout(() => {
+      setRecentlyAdded(prev => ({ ...prev, [product.id]: false }));
+    }, 1000);
   };
 
-  const removeFromCart = (productId) => {
-    setCartItems(prev => prev.filter(item => item.id !== productId));
+  const addCustomToCart = (product, quantity, price) => {
+    setCart([...cart, {
+      productId: product.id,
+      cartItemId: `cart-${Date.now()}-${Math.random()}`,
+      name: product.name,
+      quantity: quantity,
+      price: price,
+      trackStock: product.trackStock,
+      needsCustomPrice: true
+    }]);
   };
 
-  const updateQuantity = (productId, quantity) => {
-    if (quantity === 0) {
-      removeFromCart(productId);
+  const updateCartQuantity = (cartItemId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeFromCart(cartItemId);
       return;
     }
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === productId ? { ...item, quantity } : item
-      )
-    );
+    setCart(cart.map(item =>
+      item.cartItemId === cartItemId
+        ? { ...item, quantity: newQuantity }
+        : item
+    ));
+  };
+
+  const removeFromCart = (cartItemId) => {
+    setCart(cart.filter(item => item.cartItemId !== cartItemId));
   };
 
   const clearCart = () => {
-    setCartItems([]);
+    if (cart.length === 0) return;
+    if (window.confirm('Are you sure you want to clear the cart?')) {
+      setCart([]);
+    }
   };
 
-  const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const processSale = async (paymentMethod) => {
+    if (cart.length === 0 || !paymentMethod) return false;
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setCart([]);
+      return true;
+    } catch (error) {
+      console.error('Error processing sale:', error);
+      return false;
+    }
   };
+
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const value = {
-    cartItems,
+    cart,
+    recentlyAdded,
     addToCart,
+    addCustomToCart,
+    updateCartQuantity,
     removeFromCart,
-    updateQuantity,
     clearCart,
-    getCartTotal
+    processSale,
+    total
   };
 
   return (
@@ -66,4 +108,4 @@ export function CartProvider({ children }) {
       {children}
     </CartContext.Provider>
   );
-}
+};

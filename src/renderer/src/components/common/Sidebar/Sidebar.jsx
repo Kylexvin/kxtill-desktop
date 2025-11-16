@@ -88,4 +88,4 @@ const Sidebar = ({ activeTab, onTabChange, isOnline = true, pendingSyncs = 0 }) 
   );
 };
 
-export default Sidebar;
+export default Sidebar; 
