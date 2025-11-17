@@ -1,5 +1,4 @@
-// POS.jsx - Reverted with only the 3 requested changes
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   ShoppingCart, 
@@ -11,23 +10,13 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
-  AlertCircle,
   DollarSign,
   Smartphone,
   Package
 } from 'lucide-react';
-
-// Mock data - replace with actual API/SQLite calls
-const mockProducts = [
-  { id: 1, name: 'Coca Cola 500ml', sellingPrice: 60, category: 'Beverages', quantity: 50, trackStock: true, needsCustomPrice: false },
-  { id: 2, name: 'Bread White', sellingPrice: 55, category: 'Bakery', quantity: 30, trackStock: true, needsCustomPrice: false },
-  { id: 3, name: 'Milk 500ml', sellingPrice: 65, category: 'Dairy', quantity: 25, trackStock: true, needsCustomPrice: false },
-  { id: 4, name: 'Eggs (Tray)', sellingPrice: 320, category: 'Dairy', quantity: 15, trackStock: true, needsCustomPrice: false },
-  { id: 5, name: 'Rice (Custom)', sellingPrice: 0, category: 'Grains', quantity: 0, trackStock: false, needsCustomPrice: true },
-  { id: 6, name: 'Water 500ml', sellingPrice: 30, category: 'Beverages', quantity: 100, trackStock: true, needsCustomPrice: false },
-  { id: 7, name: 'Sugar 1kg', sellingPrice: 150, category: 'Groceries', quantity: 20, trackStock: true, needsCustomPrice: false },
-  { id: 8, name: 'Cooking Oil', sellingPrice: 280, category: 'Groceries', quantity: 12, trackStock: true, needsCustomPrice: false },
-];
+import salesService from '../services/salesService';
+import cartService from '../services/cartService';
+import productService from '../services/productService';
 
 const POS = () => {
   const [products, setProducts] = useState([]);
@@ -47,9 +36,19 @@ const POS = () => {
   const [recentlyAdded, setRecentlyAdded] = useState({});
 
   useEffect(() => {
-    loadProducts();
+    const loadInitialData = async () => {
+      try {
+        const savedCart = await cartService.getCart();
+        setCart(Array.isArray(savedCart) ? savedCart : []);
+        await loadProducts();
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        setCart([]); // Ensure cart is always an array
+      }
+    };
+
+    loadInitialData();
     
-    // Simulate network status checks
     const interval = setInterval(() => {
       setIsOnline(navigator.onLine);
     }, 5000);
@@ -60,11 +59,11 @@ const POS = () => {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      // Simulate API call - replace with actual API/SQLite
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProducts(mockProducts);
+      const productsData = await productService.getAllProducts();
+      setProducts(Array.isArray(productsData) ? productsData : []);
     } catch (error) {
       console.error('Error loading products:', error);
+      setProducts([]); // Ensure products is always an array
     } finally {
       setLoading(false);
     }
@@ -78,41 +77,28 @@ const POS = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product) => {
+  const addToCart = async (product) => {
     if (product.needsCustomPrice) {
       setCurrentProduct(product);
       setCustomQuantity('');
       setCustomPrice('');
       setShowCustomPriceModal(true);
     } else {
-      const existingItem = cart.find(item => item.productId === product.id && !item.needsCustomPrice);
-      
-      if (existingItem) {
-        setCart(cart.map(item =>
-          item.productId === product.id && !item.needsCustomPrice
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        ));
-      } else {
-        setCart([...cart, {
-          productId: product.id,
-          cartItemId: `cart-${Date.now()}-${Math.random()}`,
-          name: product.name,
-          quantity: 1,
-          price: product.sellingPrice,
-          trackStock: product.trackStock,
-          needsCustomPrice: false
-        }]);
+      try {
+        const updatedCart = await cartService.addToCart(product);
+        setCart(Array.isArray(updatedCart) ? updatedCart : []);
+        
+        setRecentlyAdded(prev => ({ ...prev, [product.id]: true }));
+        setTimeout(() => {
+          setRecentlyAdded(prev => ({ ...prev, [product.id]: false }));
+        }, 1000);
+      } catch (error) {
+        console.error('Error adding to cart:', error);
       }
-      
-      setRecentlyAdded(prev => ({ ...prev, [product.id]: true }));
-      setTimeout(() => {
-        setRecentlyAdded(prev => ({ ...prev, [product.id]: false }));
-      }, 1000);
     }
   };
 
-  const handleCustomProductAdd = () => {
+  const handleCustomProductAdd = async () => {
     const quantity = parseFloat(customQuantity);
     const price = parseFloat(customPrice);
 
@@ -121,52 +107,87 @@ const POS = () => {
       return;
     }
 
-    setCart([...cart, {
-      productId: currentProduct.id,
-      cartItemId: `cart-${Date.now()}-${Math.random()}`,
-      name: currentProduct.name,
-      quantity: quantity,
-      price: price,
-      trackStock: currentProduct.trackStock,
-      needsCustomPrice: true
-    }]);
+    try {
+      const customProductData = {
+        ...currentProduct,
+        quantity: quantity,
+        sellingPrice: price
+      };
+      
+      const updatedCart = await cartService.addToCart(customProductData, quantity, price);
+      setCart(Array.isArray(updatedCart) ? updatedCart : []);
 
-    setShowCustomPriceModal(false);
-    setCurrentProduct(null);
+      setShowCustomPriceModal(false);
+      setCurrentProduct(null);
+      setCustomQuantity('');
+      setCustomPrice('');
+    } catch (error) {
+      console.error('Error adding custom product:', error);
+      alert('Failed to add custom product. Please try again.');
+    }
   };
 
-  const updateCartQuantity = (cartItemId, newQuantity) => {
+  const updateCartQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(cartItemId);
+      await removeFromCart(cartItemId);
       return;
     }
-    setCart(cart.map(item =>
-      item.cartItemId === cartItemId
-        ? { ...item, quantity: newQuantity }
-        : item
-    ));
-  };
-
-  const removeFromCart = (cartItemId) => {
-    setCart(cart.filter(item => item.cartItemId !== cartItemId));
-  };
-
-  const clearCart = () => {
-    if (cart.length === 0) return;
-    if (window.confirm('Are you sure you want to clear the cart?')) {
-      setCart([]);
+    
+    try {
+      const updatedCart = await cartService.updateQuantity(cartItemId, newQuantity);
+      setCart(Array.isArray(updatedCart) ? updatedCart : []);
+    } catch (error) {
+      console.error('Error updating cart quantity:', error);
     }
   };
 
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const removeFromCart = async (cartItemId) => {
+    try {
+      const updatedCart = await cartService.removeFromCart(cartItemId);
+      setCart(Array.isArray(updatedCart) ? updatedCart : []);
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+    }
+  };
+
+  const clearCart = async () => {
+    if (cart.length === 0) return;
+    if (window.confirm('Are you sure you want to clear the cart?')) {
+      try {
+        const updatedCart = await cartService.clearCart();
+        setCart(Array.isArray(updatedCart) ? updatedCart : []);
+      } catch (error) {
+        console.error('Error clearing cart:', error);
+      }
+    }
+  };
+
+  // Safe cart calculations
+  const total = Array.isArray(cart) ? cart.reduce((sum, item) => {
+    return item && item.needsCustomPrice ? sum + (item.price || 0) : sum + ((item.price || 0) * (item.quantity || 0));
+  }, 0) : 0;
+
+  const itemCount = Array.isArray(cart) ? cart.reduce((count, item) => count + (item.quantity || 0), 0) : 0;
 
   const processSale = async () => {
     if (cart.length === 0 || !selectedPaymentMethod) return;
 
     setLoading(true);
     try {
-      // Simulate API call - replace with actual API/SQLite
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const saleItems = cart.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        ...(item.needsCustomPrice && { customPrice: item.price })
+      }));
+
+      const saleData = {
+        items: saleItems,
+        paymentMethod: selectedPaymentMethod,
+        total: total
+      };
+
+      const result = await salesService.processSale(saleData);
       
       setShowSuccessAnimation(true);
       setShowPaymentModal(false);
@@ -175,7 +196,7 @@ const POS = () => {
         setShowSuccessAnimation(false);
         setCart([]);
         setSelectedPaymentMethod(null);
-        alert(`Sale completed! Total: KSh ${total.toFixed(2)}\nPayment: ${selectedPaymentMethod === 'cash' ? 'Cash' : 'M-Pesa'}`);
+        alert(`Sale completed! Total: KSh ${total.toFixed(2)}\nPayment: ${selectedPaymentMethod === 'cash' ? 'Cash' : 'M-Pesa'}\nSale ID: ${result.saleId || 'Local'}`);
       }, 2000);
     } catch (error) {
       console.error('Error processing sale:', error);
@@ -185,13 +206,12 @@ const POS = () => {
     }
   };
 
+
+
   return (
     <div style={styles.container}>
-      {/* Main Content - No Header */}
       <div style={styles.mainContent}>
-        {/* Products Section */}
         <div style={styles.productsSection}>
-          {/* Search and Categories */}
           <div style={styles.topBar}>
             <div style={styles.searchContainer}>
               <div style={styles.searchInputWrapper}>
@@ -210,7 +230,6 @@ const POS = () => {
               </button>
             </div>
 
-            {/* Status Indicators */}
             <div style={styles.statusIndicators}>
               {!isOnline && (
                 <div style={styles.offlineBadge}>
@@ -227,7 +246,6 @@ const POS = () => {
             </div>
           </div>
 
-          {/* Categories */}
           <div style={styles.categoriesContainer}>
             {categories.map(category => (
               <button
@@ -243,7 +261,6 @@ const POS = () => {
             ))}
           </div>
 
-          {/* Products Grid */}
           <div style={styles.productsGrid}>
             {loading ? (
               Array(6).fill(0).map((_, i) => (
@@ -299,7 +316,6 @@ const POS = () => {
           </div>
         </div>
 
-        {/* Cart Section */}
         <div style={styles.cartSection}>
           <div style={styles.cartHeader}>
             <div style={styles.cartTitleSection}>
@@ -365,7 +381,7 @@ const POS = () => {
                     )}
 
                     <span style={styles.itemTotal}>
-                      KSh {(item.price * item.quantity).toFixed(2)}
+                      KSh {item.needsCustomPrice ? item.price.toFixed(2) : (item.price * item.quantity).toFixed(2)}
                     </span>
 
                     <button
@@ -415,7 +431,6 @@ const POS = () => {
         </div>
       </div>
 
-      {/* Custom Price Modal */}
       {showCustomPriceModal && (
         <div style={styles.modalOverlay} onClick={() => setShowCustomPriceModal(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -457,7 +472,6 @@ const POS = () => {
         </div>
       )}
 
-      {/* Payment Confirmation Modal */}
       {showPaymentModal && (
         <div style={styles.modalOverlay} onClick={() => setShowPaymentModal(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -491,7 +505,6 @@ const POS = () => {
         </div>
       )}
 
-      {/* Success Animation */}
       {showSuccessAnimation && (
         <div style={styles.successOverlayFull}>
           <div style={styles.successAnimation}>
