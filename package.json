@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "KXTILL Desktop POS Application",
   "main": "src/main/main.js",
-  "type": "module",
   "scripts": {
     "electron": "electron .",
     "electron-dev": "NODE_ENV=development electron .",
@@ -13,17 +12,19 @@
     "build-electron": "npm run build && electron-builder",
     "pack": "electron-builder --dir"
   },
-  "keywords": ["pos", "retail", "electron", "kxtill"],
+  "keywords": [
+    "pos",
+    "retail",
+    "electron",
+    "kxtill"
+  ],
   "author": "KXTILL",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^27.0.0",
     "concurrently": "^8.2.0",
-    "wait-on": "^7.0.1",
-    "electron-builder": "^24.6.4"
-  },
-  "dependencies": {
-    "sqlite3": "^5.1.6"
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "wait-on": "^7.0.1"
   },
   "build": {
     "appId": "com.kxtill.pos",
@@ -45,5 +46,8 @@
     "linux": {
       "target": "AppImage"
     }
+  },
+  "dependencies": {
+    "sql.js": "^1.13.0"
   }
 }

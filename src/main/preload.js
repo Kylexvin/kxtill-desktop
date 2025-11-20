@@ -1,4 +1,4 @@
-// src/main/preload.js
+// src/main/preload.js - CONVERT TO COMMONJS
 const { contextBridge, ipcRenderer } = require('electron');
 
 console.log('🎯 Preload script loaded!');
@@ -69,6 +69,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getPendingSyncItems: () => {
       console.log('📡 getPendingSyncItems called from renderer');
       return ipcRenderer.invoke('db:getPendingSyncItems');
+    },
+
+    // === DEBUG METHODS ===
+    debugGetAllData: () => {
+      console.log('📡 debugGetAllData called from renderer');
+      return ipcRenderer.invoke('db:debug:getAllData');
+    },
+    debugCheckConnection: () => {
+      console.log('📡 debugCheckConnection called from renderer');
+      return ipcRenderer.invoke('db:debug:checkConnection');
+    },
+    debugTestSync: () => {
+      console.log('📡 debugTestSync called from renderer');
+      return ipcRenderer.invoke('db:debug:testSync');
+    },
+    debugClearDatabase: () => {
+      console.log('📡 debugClearDatabase called from renderer');
+      return ipcRenderer.invoke('db:debug:clearDatabase');
     }
   },
   

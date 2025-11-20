@@ -10,7 +10,10 @@ import {
   Package,
   Tag,
   DollarSign,
-  X
+  X,
+  Bug,
+  RefreshCw,
+  Database
 } from 'lucide-react';
 import productService from '../services/productService';
 import "./Products.css";
@@ -22,6 +25,7 @@ const Products = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productsData, setProductsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     loadProductsData();
@@ -30,12 +34,76 @@ const Products = () => {
   const loadProductsData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Loading products data...');
       const data = await productService.getAllProducts();
-      setProductsData(data);
+      console.log('✅ Products data loaded:', data?.length);
+      setProductsData(data || []);
     } catch (error) {
-      console.error('Failed to load products:', error);
+      console.error('❌ Failed to load products:', error);
+      setProductsData([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runDebugCheck = async () => {
+    try {
+      setDebugInfo('Running debug check...');
+      console.log('🔍 Starting debug check...');
+      
+      const dbContents = await productService.debugCheckDatabase();
+      console.log('🎯 Debug result:', dbContents);
+      
+      setDebugInfo(`
+Debug Results:
+- Online: ${navigator.onLine}
+- Products in DB: ${dbContents?.length || 0}
+- Sample: ${JSON.stringify(dbContents?.[0] || 'None', null, 2)}
+      `);
+      
+    } catch (error) {
+      console.error('❌ Debug failed:', error);
+      setDebugInfo(`Debug failed: ${error.message}`);
+    }
+  };
+
+  const runConnectionCheck = async () => {
+    try {
+      setDebugInfo('Checking connection...');
+      const result = await productService.debugCheckConnection();
+      setDebugInfo(`Connection: ${JSON.stringify(result, null, 2)}`);
+    } catch (error) {
+      setDebugInfo(`Connection check failed: ${error.message}`);
+    }
+  };
+
+  const runTestSync = async () => {
+    try {
+      setDebugInfo('Testing sync with sample data...');
+      const result = await productService.debugTestSync();
+      setDebugInfo(`Test Sync: ${JSON.stringify(result, null, 2)}`);
+      
+      // Reload products to see if test data appears
+      setTimeout(() => {
+        loadProductsData();
+      }, 1000);
+    } catch (error) {
+      setDebugInfo(`Test Sync Failed: ${error.message}`);
+    }
+  };
+
+  const runClearDatabase = async () => {
+    try {
+      setDebugInfo('Clearing database...');
+      const result = await productService.debugClearDatabase();
+      setDebugInfo(`Clear Database: ${JSON.stringify(result, null, 2)}`);
+      
+      // Reload products
+      setTimeout(() => {
+        loadProductsData();
+      }, 1000);
+    } catch (error) {
+      setDebugInfo(`Clear Failed: ${error.message}`);
     }
   };
 
@@ -254,6 +322,35 @@ const Products = () => {
           <p>Manage your products and pricing</p>
         </div>
         <div className="header-actions">
+          {/* DEBUG BUTTONS */}
+          <button className="btn btn-outline" onClick={runDebugCheck}>
+            <Database size={16} />
+            Check DB
+          </button> 
+<button className="btn btn-outline" onClick={async () => {
+  console.log('🔍 Starting sync flow trace...');
+  try {
+    const result = await productService.debugTraceSyncFlow();
+    setDebugInfo(`Sync Flow Trace: ${JSON.stringify(result, null, 2)}`);
+  } catch (error) {
+    setDebugInfo(`Trace Failed: ${error.message}`);
+  }
+}}>
+  <Bug size={16} />
+  Trace Sync
+</button>
+          <button className="btn btn-outline" onClick={runConnectionCheck}>
+            <Bug size={16} />
+            Connection
+          </button>
+          <button className="btn btn-outline" onClick={runTestSync}>
+            <RefreshCw size={16} />
+            Test Sync
+          </button>
+          <button className="btn btn-outline" onClick={runClearDatabase}>
+            <Trash2 size={16} />
+            Clear DB
+          </button>
           <button className="btn btn-outline">
             <Upload size={16} />
             Import
@@ -266,6 +363,35 @@ const Products = () => {
             <Plus size={16} />
             Add Product
           </button>
+        </div>
+      </div>
+
+      {/* DEBUG INFO */}
+      {debugInfo && (
+        <div className="debug-info">
+          <h4>Debug Information:</h4>
+          <pre>{debugInfo}</pre>
+          <button onClick={() => setDebugInfo('')} className="btn btn-sm">
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Status Bar */}
+      <div className="status-bar">
+        <div className="status-item">
+          <span className="status-label">Online:</span>
+          <span className={`status-value ${navigator.onLine ? 'online' : 'offline'}`}>
+            {navigator.onLine ? 'Yes' : 'No'}
+          </span>
+        </div>
+        <div className="status-item">
+          <span className="status-label">Products Loaded:</span>
+          <span className="status-value">{productsData.length}</span>
+        </div>
+        <div className="status-item">
+          <span className="status-label">Filtered:</span>
+          <span className="status-value">{filteredProducts.length}</span>
         </div>
       </div>
 
